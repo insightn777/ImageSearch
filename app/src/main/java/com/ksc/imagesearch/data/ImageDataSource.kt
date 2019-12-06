@@ -13,7 +13,7 @@ class ImageDataSource(
         private val kakaoApi: KakaoApi,
         private val query: String,
         private val retryExecutor: Executor
-) : PageKeyedDataSource<String,ImageSearchResponse.Document>()
+) : PageKeyedDataSource<Int,ImageSearchResponse.Document>()
 {
     // keep a function reference for the retry event
     private var retry: (() -> Any)? = null
@@ -40,8 +40,8 @@ class ImageDataSource(
     }
 
     override fun loadInitial(
-        params: LoadInitialParams<String>,
-        callback: LoadInitialCallback<String, ImageSearchResponse.Document>
+        params: LoadInitialParams<Int>,
+        callback: LoadInitialCallback<Int, ImageSearchResponse.Document>
     ) {
         page = 1
         val request = kakaoApi.searchImages(
@@ -58,7 +58,7 @@ class ImageDataSource(
             retry = null
             networkState.postValue(NetworkState.LOADED)
             initialLoad.postValue(NetworkState.LOADED)
-            callback.onResult(items,"${page}","${page+1}")
+            callback.onResult(items,page,page+1)
         } catch (ioException: IOException) {
             retry = {
                 loadInitial(params, callback)
@@ -70,8 +70,8 @@ class ImageDataSource(
     }
 
     override fun loadAfter(
-        params: LoadParams<String>,
-        callback: LoadCallback<String, ImageSearchResponse.Document>
+        params: LoadParams<Int>,
+        callback: LoadCallback<Int, ImageSearchResponse.Document>
     ) {
         if ( isEnd ) return
         networkState.postValue(NetworkState.LOADING)
@@ -94,7 +94,7 @@ class ImageDataSource(
                     if (response.isSuccessful) {
                         val items = response.body()?.documents ?: emptyList()
                         retry = null
-                        callback.onResult(items, "$page")
+                        callback.onResult(items, page)
                         networkState.postValue(NetworkState.LOADED)
                         isEnd = response.body()?.meta?.is_end ?: false
                     } else {
@@ -109,8 +109,8 @@ class ImageDataSource(
     }
 
     override fun loadBefore(
-        params: LoadParams<String>,
-        callback: LoadCallback<String, ImageSearchResponse.Document>
+        params: LoadParams<Int>,
+        callback: LoadCallback<Int, ImageSearchResponse.Document>
     ) {
         // ignored, since we only ever append to our initial load
     }
